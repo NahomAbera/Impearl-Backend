@@ -1,0 +1,54 @@
+const mongoose = require('mongoose');
+
+const FreelancerProfileSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
+  headline: {
+    type: String,
+    trim: true
+  },
+  skills: {
+    type: [String],
+    default: []
+  },
+  yearsExperience: {
+    type: String,
+    enum: ['0-1', '1-3', '3-5', '5-10', '10+']
+  },
+  hourlyRate: {
+    type: Number,
+    min: 0
+  },
+  availability: {
+    type: String,
+    enum: ['full-time', 'part-time', 'contract', 'hourly', 'not-available']
+  },
+  industries: {
+    type: [String],
+    default: []
+  },
+  portfolioUrl: {
+    type: String
+  },
+  bio: {
+    type: String
+  },
+  ratingAvg: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
+  ratingCount: {
+    type: Number,
+    default: 0
+  }
+}, {
+  timestamps: true
+});
+
+module.exports = mongoose.model('FreelancerProfile', FreelancerProfileSchema);
