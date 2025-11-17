@@ -35,6 +35,7 @@ const notificationRoutes = require('./routes/notifications');
 const reviewRoutes = require('./routes/reviews');
 const supportRoutes = require('./routes/support');
 const matchRoutes = require('./routes/matches');
+const recommendationRoutes = require('./routes/recommendations');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -48,6 +49,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/matches', matchRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

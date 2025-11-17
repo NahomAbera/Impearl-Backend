@@ -1,45 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const https = require('https');
 const User = require('../models/User');
 const { getMatchesForUser, buildProfileSummary, formatMatchesForPrompt } = require('../utils/matching');
-
-const callOpenAI = (payload, apiKey) => {
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-      },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch (err) {
-              reject(err);
-            }
-          } else {
-            reject(new Error(data || `OpenAI error ${res.statusCode}`));
-          }
-        });
-      }
-    );
-
-    req.on('error', reject);
-    req.write(JSON.stringify(payload));
-    req.end();
-  });
-};
+const { callOpenAI } = require('../utils/openai');
 
 router.post('/chat', auth, async (req, res) => {
   try {
