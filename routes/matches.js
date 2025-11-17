@@ -5,6 +5,8 @@ const requireRole = require('../middleware/roles');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { getMatchesForUser, buildFreelancerSummary, buildProviderSummary } = require('../utils/matching');
+const FreelancerProfile = require('../models/FreelancerProfile');
+const ServiceProviderProfile = require('../models/ServiceProviderProfile');
 
 router.get('/top', auth, async (req, res) => {
   try {
@@ -35,6 +37,14 @@ router.post('/request', auth, requireRole(['freelancer', 'service_provider']), a
 
     const businessProfile = businessUser.businessProfile || {};
     const sender = await User.findById(req.userId);
+
+    const profile = req.userType === 'freelancer'
+      ? await FreelancerProfile.findOne({ user: req.userId })
+      : await ServiceProviderProfile.findOne({ user: req.userId });
+
+    if (!profile || !profile.payoutsEnabled) {
+      return res.status(400).json({ success: false, message: 'Complete Stripe payout setup before contacting businesses' });
+    }
 
     const summary = sender.userType === 'freelancer'
       ? buildFreelancerSummary(sender)

@@ -16,12 +16,12 @@ const {
 const fetchCandidates = async (type, limit = 8) => {
   const queryMap = {
     freelancer: {
-      filter: { userType: 'freelancer', 'freelancerProfile.name': { $exists: true, $ne: '' } },
+      filter: { userType: 'freelancer', 'freelancerProfile.name': { $exists: true, $ne: '' }, 'freelancerProfile.payoutsEnabled': true },
       select: 'freelancerProfile email userType',
       map: buildFreelancerSummary,
     },
     provider: {
-      filter: { userType: 'service_provider', 'serviceProviderProfile.companyName': { $exists: true, $ne: '' } },
+      filter: { userType: 'service_provider', 'serviceProviderProfile.companyName': { $exists: true, $ne: '' }, 'serviceProviderProfile.payoutsEnabled': true },
       select: 'serviceProviderProfile email userType',
       map: buildProviderSummary,
     },

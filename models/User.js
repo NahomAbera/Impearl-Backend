@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['freelancer', 'business', 'service_provider'],
+    enum: ['freelancer', 'business', 'service_provider', 'admin'],
     required: [true, 'User type is required']
   },
   createdAt: {
@@ -71,6 +71,19 @@ const UserSchema = new mongoose.Schema({
     reviewCount: {
       type: Number,
       default: 0
+    },
+    stripeAccountId: {
+      type: String,
+      default: null
+    },
+    stripeStatus: {
+      type: String,
+      enum: ['pending', 'enabled', 'disabled'],
+      default: 'pending'
+    },
+    payoutsEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   
@@ -141,6 +154,19 @@ const UserSchema = new mongoose.Schema({
     reviewCount: {
       type: Number,
       default: 0
+    },
+    stripeAccountId: {
+      type: String,
+      default: null
+    },
+    stripeStatus: {
+      type: String,
+      enum: ['pending', 'enabled', 'disabled'],
+      default: 'pending'
+    },
+    payoutsEnabled: {
+      type: Boolean,
+      default: false
     }
   }
 }, {

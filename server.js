@@ -10,6 +10,10 @@ const app = express();
 
 // Middleware
 app.use(cors());
+
+const stripeWebhookHandler = require('./routes/stripeWebhook');
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -36,6 +40,8 @@ const reviewRoutes = require('./routes/reviews');
 const supportRoutes = require('./routes/support');
 const matchRoutes = require('./routes/matches');
 const recommendationRoutes = require('./routes/recommendations');
+const connectRoutes = require('./routes/connect');
+const adminRoutes = require('./routes/admin');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -50,6 +56,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/connect', connectRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

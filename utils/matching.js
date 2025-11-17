@@ -63,6 +63,7 @@ const getCandidateFreelancers = async () =>
   User.find({
     userType: 'freelancer',
     'freelancerProfile.name': { $exists: true, $ne: '' },
+    'freelancerProfile.payoutsEnabled': true,
   })
     .select('freelancerProfile userType email')
     .lean();
@@ -71,6 +72,7 @@ const getCandidateProviders = async () =>
   User.find({
     userType: 'service_provider',
     'serviceProviderProfile.companyName': { $exists: true, $ne: '' },
+    'serviceProviderProfile.payoutsEnabled': true,
   })
     .select('serviceProviderProfile userType email')
     .lean();

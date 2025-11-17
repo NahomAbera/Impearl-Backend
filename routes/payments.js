@@ -2,41 +2,83 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/roles');
-const Payment = require('../models/Payment');
 const Contract = require('../models/Contract');
 const BusinessProfile = require('../models/BusinessProfile');
-const Notification = require('../models/Notification');
+const FreelancerProfile = require('../models/FreelancerProfile');
+const ServiceProviderProfile = require('../models/ServiceProviderProfile');
+const { getStripe, calculatePaymentBreakdown } = require('../utils/stripeClient');
 
-router.post('/', auth, requireRole('business'), async (req, res) => {
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+
+const ensureBusinessOwnsContract = async (contract, userId) => {
+  const businessProfile = await BusinessProfile.findOne({ user: userId });
+  if (!businessProfile || String(businessProfile._id) !== String(contract.business)) {
+    throw new Error('You do not have access to this contract');
+  }
+};
+
+const getPayeeProfile = async (contract) => {
+  if (contract.targetType === 'freelancer') {
+    return await FreelancerProfile.findById(contract.targetFreelancer);
+  }
+  return await ServiceProviderProfile.findById(contract.targetProvider);
+};
+
+router.post('/create-checkout-session', auth, requireRole('business'), async (req, res) => {
   try {
-    const { contractId, amount } = req.body;
+    const { contractId } = req.body;
     const contract = await Contract.findById(contractId);
     if (!contract) return res.status(404).json({ success: false, message: 'Contract not found' });
 
-    const businessProfile = await BusinessProfile.findOne({ user: req.userId });
+    await ensureBusinessOwnsContract(contract, req.userId);
 
-    const payment = await Payment.create({
-      contract: contract._id,
-      payerBusiness: businessProfile._id,
-      targetType: contract.targetType,
-      payeeFreelancer: contract.targetFreelancer,
-      payeeProvider: contract.targetProvider,
-      amount,
-      currency: contract.currency
+    if (contract.paymentStatus !== 'unpaid') {
+      return res.status(400).json({ success: false, message: 'Contract already paid' });
+    }
+
+    const payeeProfile = await getPayeeProfile(contract);
+    if (!payeeProfile || !payeeProfile.payoutsEnabled || !payeeProfile.stripeAccountId) {
+      return res.status(400).json({ success: false, message: 'Payee has not completed payout setup' });
+    }
+
+    const stripe = getStripe();
+    const { baseCents, feeCents, totalCents } = calculatePaymentBreakdown(contract.amountUsd || contract.agreedPrice);
+
+    const successUrl = `${FRONTEND_URL}/contracts/${contract._id}?payment=success`;
+    const cancelUrl = `${FRONTEND_URL}/contracts/${contract._id}?payment=cancel`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `IMPEARL Contract: ${contract.title}`,
+            },
+            unit_amount: totalCents,
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        contractId: contract._id.toString(),
+        baseAmountCents: baseCents.toString(),
+        serviceFeeCents: feeCents.toString(),
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
-    await Notification.create({
-      user: contract.business.user,
-      type: 'payment',
-      title: 'Payment completed',
-      message: `Payment of $${amount} completed for ${contract.title}`,
-      relatedContract: contract._id
-    });
+    contract.checkoutSessionId = session.id;
+    contract.paymentStatus = 'unpaid';
+    await contract.save();
 
-    res.status(201).json({ success: true, payment });
+    res.json({ success: true, url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Create payment error:', error);
-    res.status(500).json({ success: false, message: 'Error creating payment' });
+    console.error('Create checkout session error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Unable to initiate payment' });
   }
 });
 

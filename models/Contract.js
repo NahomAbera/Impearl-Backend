@@ -44,6 +44,24 @@ const ContractSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'completed'],
     default: 'active'
+  },
+  amountUsd: {
+    type: Number,
+    required: true
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'held', 'released', 'disputed', 'refunded'],
+    default: 'unpaid'
+  },
+  paymentIntentId: String,
+  checkoutSessionId: String,
+  paidAt: Date,
+  releasedAt: Date,
+  payoutTransferId: String,
+  freelancerRequestedRelease: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

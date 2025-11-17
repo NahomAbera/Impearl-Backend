@@ -6,6 +6,9 @@ const MarketplaceItem = require('../models/MarketplaceItem');
 const FreelancerProfile = require('../models/FreelancerProfile');
 const ServiceProviderProfile = require('../models/ServiceProviderProfile');
 
+const hasPayoutsEnabled = (profile) =>
+  !!(profile && profile.payoutsEnabled && profile.stripeAccountId);
+
 // Get marketplace items with optional filters
 router.get('/', async (req, res) => {
   try {
@@ -27,7 +30,17 @@ router.get('/', async (req, res) => {
       .populate('ownerFreelancer')
       .populate('ownerProvider');
 
-    res.json({ success: true, items });
+    const visibleItems = items.filter((item) => {
+      if (item.ownerType === 'freelancer') {
+        return hasPayoutsEnabled(item.ownerFreelancer);
+      }
+      if (item.ownerType === 'service_provider') {
+        return hasPayoutsEnabled(item.ownerProvider);
+      }
+      return false;
+    });
+
+    res.json({ success: true, items: visibleItems });
   } catch (error) {
     console.error('Get marketplace items error:', error);
     res.status(500).json({ success: false, message: 'Error fetching marketplace items' });
@@ -42,6 +55,14 @@ router.get('/:id', async (req, res) => {
       .populate('ownerProvider');
 
     if (!item) {
+      return res.status(404).json({ success: false, message: 'Marketplace item not found' });
+    }
+
+    const visible =
+      (item.ownerType === 'freelancer' && hasPayoutsEnabled(item.ownerFreelancer)) ||
+      (item.ownerType === 'service_provider' && hasPayoutsEnabled(item.ownerProvider));
+
+    if (!visible) {
       return res.status(404).json({ success: false, message: 'Marketplace item not found' });
     }
 
@@ -80,6 +101,9 @@ const attachOwner = async (itemData, userId, userType) => {
     if (!profile) {
       throw new Error('Freelancer profile required');
     }
+    if (!hasPayoutsEnabled(profile)) {
+      throw new Error('Complete Stripe payout setup before listing services');
+    }
     itemData.ownerType = 'freelancer';
     itemData.ownerFreelancer = profile._id;
     return itemData;
@@ -88,6 +112,9 @@ const attachOwner = async (itemData, userId, userType) => {
     const profile = await ServiceProviderProfile.findOne({ user: userId });
     if (!profile) {
       throw new Error('Service provider profile required');
+    }
+    if (!hasPayoutsEnabled(profile)) {
+      throw new Error('Complete Stripe payout setup before listing services');
     }
     itemData.ownerType = 'service_provider';
     itemData.ownerProvider = profile._id;
@@ -107,7 +134,8 @@ router.post('/', auth, requireRole(['freelancer', 'service_provider']), async (r
     res.status(201).json({ success: true, item });
   } catch (error) {
     console.error('Create marketplace item error:', error);
-    res.status(500).json({ success: false, message: 'Error creating marketplace item' });
+    const status = /profile required|payout setup/i.test(error.message || '') ? 400 : 500;
+    res.status(status).json({ success: false, message: error.message || 'Error creating marketplace item' });
   }
 });
 

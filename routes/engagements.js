@@ -162,6 +162,14 @@ router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider', 
 
     engagement.status = 'accepted';
 
+    const payeeProfile = engagement.targetType === 'freelancer'
+      ? await FreelancerProfile.findById(engagement.targetFreelancer)
+      : await ServiceProviderProfile.findById(engagement.targetProvider);
+
+    if (!payeeProfile || !payeeProfile.payoutsEnabled || !payeeProfile.stripeAccountId) {
+      return res.status(400).json({ success: false, message: 'Payee must complete payout setup before contracts can be created.' });
+    }
+
     const contractData = {
       engagementRequest: engagement._id,
       business: engagement.fromBusiness,
@@ -169,7 +177,8 @@ router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider', 
       title: engagement.title,
       description: engagement.description,
       agreedPrice: engagement.latestOffer?.price || engagement.initialPrice,
-      currency: engagement.currency
+      currency: engagement.currency,
+      amountUsd: engagement.latestOffer?.price || engagement.initialPrice,
     };
 
     if (engagement.targetType === 'freelancer') {
