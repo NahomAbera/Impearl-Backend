@@ -7,6 +7,11 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+app.set('etag', false);
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // Middleware
 app.use(cors());
