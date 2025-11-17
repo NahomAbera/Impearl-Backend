@@ -7,6 +7,12 @@ const BusinessProfileSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    unique: true,
+    sparse: true
+  },
   businessName: {
     type: String,
     required: true,
