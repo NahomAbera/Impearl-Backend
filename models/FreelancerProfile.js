@@ -7,6 +7,12 @@ const FreelancerProfileSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    unique: true,
+    sparse: true
+  },
   headline: {
     type: String,
     trim: true

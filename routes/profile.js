@@ -89,20 +89,23 @@ router.post('/freelancer', auth, async (req, res) => {
 
     await user.save();
 
+    const freelancerProfileDoc = {
+      user: user._id,
+      user_id: user._id,
+      headline: name,
+      skills: parsedSkills,
+      yearsExperience,
+      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
+      availability: availability || 'not-available',
+      industries: [],
+      portfolioUrl: portfolioLinks || '',
+      bio: pastProjects || '',
+    };
+
     await FreelancerProfileModel.findOneAndUpdate(
-      { user: user._id },
-      {
-        user: user._id,
-        headline: name,
-        skills: parsedSkills,
-        yearsExperience,
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
-        availability: availability || 'not-available',
-        industries: [],
-        portfolioUrl: portfolioLinks || '',
-        bio: pastProjects || '',
-      },
-      { upsert: true, new: true }
+      { $or: [{ user: user._id }, { user_id: user._id }] },
+      freelancerProfileDoc,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     res.json({
