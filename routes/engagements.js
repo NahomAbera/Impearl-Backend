@@ -10,7 +10,35 @@ const Contract = require('../models/Contract');
 const Notification = require('../models/Notification');
 
 const notifyUsers = async (userIds, payload) => {
-  await Notification.insertMany(userIds.map(user => ({ ...payload, user })));
+  const docs = userIds
+    .filter(Boolean)
+    .map(user => ({ ...payload, user }));
+  if (!docs.length) return;
+  await Notification.insertMany(docs);
+};
+
+const getBusinessUserId = async (engagement) => {
+  if (engagement.fromBusiness?.user) return engagement.fromBusiness.user;
+  const businessProfile = await BusinessProfile.findById(engagement.fromBusiness);
+  return businessProfile?.user;
+};
+
+const getTalentUserId = async (engagement) => {
+  if (engagement.targetType === 'freelancer') {
+    if (engagement.targetFreelancer?.user) return engagement.targetFreelancer.user;
+    const profile = await FreelancerProfile.findById(engagement.targetFreelancer);
+    return profile?.user;
+  }
+  if (engagement.targetProvider?.user) return engagement.targetProvider.user;
+  const providerProfile = await ServiceProviderProfile.findById(engagement.targetProvider);
+  return providerProfile?.user;
+};
+
+const notifyCounterparty = async (engagement, actorRole, payload) => {
+  const recipient = actorRole === 'business'
+    ? await getTalentUserId(engagement)
+    : await getBusinessUserId(engagement);
+  await notifyUsers([recipient], payload);
 };
 
 // Create engagement request
@@ -110,12 +138,27 @@ router.get('/my', auth, async (req, res) => {
 });
 
 // Accept engagement
-router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
+router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider', 'business']), async (req, res) => {
   try {
     const engagement = await EngagementRequest.findById(req.params.id)
-      .populate('fromBusiness');
+      .populate('fromBusiness')
+      .populate('targetFreelancer')
+      .populate('targetProvider');
 
     if (!engagement) return res.status(404).json({ success: false, message: 'Engagement not found' });
+
+    const lastRole = engagement.latestOffer?.fromRole;
+    if (lastRole === req.userType) {
+      return res.status(400).json({ success: false, message: 'Awaiting response from other party' });
+    }
+
+    if (req.userType === 'business' && engagement.status !== 'countered') {
+      return res.status(400).json({ success: false, message: 'Only counteroffers can be accepted by businesses' });
+    }
+
+    if (req.userType !== 'business' && engagement.status !== 'pending' && engagement.status !== 'countered') {
+      return res.status(400).json({ success: false, message: 'Engagement is not open for acceptance' });
+    }
 
     engagement.status = 'accepted';
 
@@ -139,7 +182,11 @@ router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider'])
     engagement.contract = contract._id;
     await engagement.save();
 
-    await notifyUsers([engagement.fromBusiness.user], {
+    const recipientUser = req.userType === 'business'
+      ? await getTalentUserId(engagement)
+      : engagement.fromBusiness.user;
+
+    await notifyUsers([recipientUser], {
       type: 'engagement_accepted',
       title: 'Engagement accepted',
       message: `${engagement.title} was accepted`,
@@ -155,16 +202,23 @@ router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider'])
 });
 
 // Decline engagement
-router.post('/:id/decline', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
+router.post('/:id/decline', auth, requireRole(['freelancer', 'service_provider', 'business']), async (req, res) => {
   try {
     const engagement = await EngagementRequest.findById(req.params.id)
-      .populate('fromBusiness');
+      .populate('fromBusiness')
+      .populate('targetFreelancer')
+      .populate('targetProvider');
     if (!engagement) return res.status(404).json({ success: false, message: 'Engagement not found' });
+
+    const lastRole = engagement.latestOffer?.fromRole;
+    if (lastRole === req.userType) {
+      return res.status(400).json({ success: false, message: 'Awaiting response from other party' });
+    }
 
     engagement.status = 'declined';
     await engagement.save();
 
-    await notifyUsers([engagement.fromBusiness.user], {
+    await notifyCounterparty(engagement, req.userType, {
       type: 'engagement_declined',
       title: 'Engagement declined',
       message: `${engagement.title} was declined`,
@@ -179,13 +233,20 @@ router.post('/:id/decline', auth, requireRole(['freelancer', 'service_provider']
 });
 
 // Counteroffer
-router.post('/:id/counter', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
+router.post('/:id/counter', auth, requireRole(['freelancer', 'service_provider', 'business']), async (req, res) => {
   try {
     const engagement = await EngagementRequest.findById(req.params.id)
-      .populate('fromBusiness');
+      .populate('fromBusiness')
+      .populate('targetFreelancer')
+      .populate('targetProvider');
     if (!engagement) return res.status(404).json({ success: false, message: 'Engagement not found' });
 
     const { price, terms } = req.body;
+
+    const lastRole = engagement.latestOffer?.fromRole;
+    if (lastRole === req.userType) {
+      return res.status(400).json({ success: false, message: 'Awaiting response from other party' });
+    }
 
     engagement.status = 'countered';
     engagement.latestOffer = {
@@ -197,7 +258,7 @@ router.post('/:id/counter', auth, requireRole(['freelancer', 'service_provider']
 
     await engagement.save();
 
-    await notifyUsers([engagement.fromBusiness.user], {
+    await notifyCounterparty(engagement, req.userType, {
       type: 'engagement_counter',
       title: 'New counteroffer',
       message: `${engagement.title} has a new counteroffer`,
