@@ -188,10 +188,12 @@ router.post('/business', auth, async (req, res) => {
       businessProfileDoc.companySize = companySize;
     }
 
+    businessProfileDoc.user_id = user._id;
+
     await BusinessProfileModel.findOneAndUpdate(
-      { user: user._id },
+      { $or: [{ user: user._id }, { user_id: user._id }] },
       businessProfileDoc,
-      { upsert: true, new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     res.json({
