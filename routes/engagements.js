@@ -157,7 +157,8 @@ router.post('/:id/accept', auth, requireRole(['freelancer', 'service_provider'])
 // Decline engagement
 router.post('/:id/decline', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
   try {
-    const engagement = await EngagementRequest.findById(req.params.id);
+    const engagement = await EngagementRequest.findById(req.params.id)
+      .populate('fromBusiness');
     if (!engagement) return res.status(404).json({ success: false, message: 'Engagement not found' });
 
     engagement.status = 'declined';
@@ -180,7 +181,8 @@ router.post('/:id/decline', auth, requireRole(['freelancer', 'service_provider']
 // Counteroffer
 router.post('/:id/counter', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
   try {
-    const engagement = await EngagementRequest.findById(req.params.id);
+    const engagement = await EngagementRequest.findById(req.params.id)
+      .populate('fromBusiness');
     if (!engagement) return res.status(404).json({ success: false, message: 'Engagement not found' });
 
     const { price, terms } = req.body;
