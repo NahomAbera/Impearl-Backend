@@ -34,6 +34,7 @@ const messageRoutes = require('./routes/messages');
 const notificationRoutes = require('./routes/notifications');
 const reviewRoutes = require('./routes/reviews');
 const supportRoutes = require('./routes/support');
+const matchRoutes = require('./routes/matches');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -46,6 +47,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/matches', matchRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
