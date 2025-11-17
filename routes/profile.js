@@ -106,6 +106,8 @@ router.post('/freelancer', auth, async (req, res) => {
       stripeAccountId: user.freelancerProfile?.stripeAccountId || null,
       stripeStatus: user.freelancerProfile?.stripeStatus || 'pending',
       payoutsEnabled: user.freelancerProfile?.payoutsEnabled || false,
+      ratingAvg: user.freelancerProfile?.rating || 0,
+      ratingCount: user.freelancerProfile?.reviewCount || 0,
     };
 
     await FreelancerProfileModel.findOneAndUpdate(
@@ -173,7 +175,9 @@ router.post('/business', auth, async (req, res) => {
       goals,
       requiredSkills: requiredSkills || '',
       website: website || '',
-      description: description || ''
+      description: description || '',
+      rating: user.businessProfile?.rating || 0,
+      reviewCount: user.businessProfile?.reviewCount || 0
     };
 
     if (companySize) {
@@ -190,7 +194,9 @@ router.post('/business', auth, async (req, res) => {
       industry,
       goals,
       websiteUrl: website || '',
-      description: description || ''
+      description: description || '',
+      ratingAvg: user.businessProfile?.rating || 0,
+      ratingCount: user.businessProfile?.reviewCount || 0
     };
 
     if (companySize) {
@@ -289,6 +295,8 @@ router.post('/service-provider', auth, async (req, res) => {
         stripeAccountId: user.serviceProviderProfile?.stripeAccountId || null,
         stripeStatus: user.serviceProviderProfile?.stripeStatus || 'pending',
         payoutsEnabled: user.serviceProviderProfile?.payoutsEnabled || false,
+        ratingAvg: user.serviceProviderProfile?.rating || 0,
+        ratingCount: user.serviceProviderProfile?.reviewCount || 0,
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );

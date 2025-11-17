@@ -38,6 +38,16 @@ const BusinessProfileSchema = new mongoose.Schema({
   },
   description: {
     type: String
+  },
+  ratingAvg: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  },
+  ratingCount: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

@@ -3,17 +3,36 @@ const mongoose = require('mongoose');
 const ReviewSchema = new mongoose.Schema({
   reviewerBusiness: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'BusinessProfile',
+    ref: 'BusinessProfile'
+  },
+  reviewerUser: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
+  },
+  reviewerType: {
+    type: String,
+    enum: ['business', 'freelancer', 'service_provider'],
+    required: true
+  },
+  reviewerName: {
+    type: String
   },
   targetType: {
     type: String,
-    enum: ['freelancer', 'service_provider', 'marketplace_item'],
+    enum: ['business', 'freelancer', 'service_provider', 'marketplace_item'],
+    required: true
+  },
+  targetUser: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   targetId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true
+    type: mongoose.Schema.Types.ObjectId
+  },
+  targetName: {
+    type: String
   },
   rating: {
     type: Number,
