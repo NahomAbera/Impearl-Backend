@@ -10,9 +10,20 @@ const Notification = require('../models/Notification');
 const { getStripe, calculatePaymentBreakdown } = require('../utils/stripeClient');
 const ensureBusinessOwnership = async (contract, userId) => {
   const businessProfile = await BusinessProfile.findOne({ user: userId });
-  if (!businessProfile || String(businessProfile._id) !== String(contract.business)) {
-    throw new Error('You do not have access to this contract');
+  if (businessProfile && String(businessProfile._id) === String(contract.business)) {
+    return;
   }
+
+  if (contract.business?.user && String(contract.business.user) === String(userId)) {
+    return;
+  }
+
+  const loadedBusiness = await BusinessProfile.findById(contract.business);
+  if (loadedBusiness && String(loadedBusiness.user) === String(userId)) {
+    return;
+  }
+
+  throw new Error('You do not have access to this contract');
 };
 
 const getPayeeProfile = async (contract) => {
