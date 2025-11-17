@@ -158,30 +158,39 @@ router.post('/business', auth, async (req, res) => {
     }
 
     // Update business profile
-    user.businessProfile = {
+    const userBusinessProfile = {
       businessName,
       industry,
-      companySize: companySize || '',
       goals,
       requiredSkills: requiredSkills || '',
       website: website || '',
       description: description || ''
     };
 
+    if (companySize) {
+      userBusinessProfile.companySize = companySize;
+    }
+
+    user.businessProfile = userBusinessProfile;
+
     await user.save();
+
+    const businessProfileDoc = {
+      user: user._id,
+      businessName,
+      industry,
+      goals,
+      websiteUrl: website || '',
+      description: description || ''
+    };
+
+    if (companySize) {
+      businessProfileDoc.companySize = companySize;
+    }
 
     await BusinessProfileModel.findOneAndUpdate(
       { user: user._id },
-      {
-        user: user._id,
-        businessName,
-        industry,
-        companySize: companySize || '',
-        goals,
-        requiredSkills: requiredSkills || '',
-        websiteUrl: website || '',
-        description: description || ''
-      },
+      businessProfileDoc,
       { upsert: true, new: true }
     );
 

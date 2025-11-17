@@ -40,4 +40,22 @@ router.put('/:id/answers', auth, requireRole('business'), async (req, res) => {
   }
 });
 
+// Get latest session for logged in business
+router.get('/latest', auth, requireRole('business'), async (req, res) => {
+  try {
+    const businessProfile = await BusinessProfile.findOne({ user: req.userId });
+    if (!businessProfile) {
+      return res.status(400).json({ success: false, message: 'Business profile required' });
+    }
+
+    const session = await QnASession.findOne({ business: businessProfile._id })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, session });
+  } catch (error) {
+    console.error('Get latest Q&A session error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching Q&A session' });
+  }
+});
+
 module.exports = router;
