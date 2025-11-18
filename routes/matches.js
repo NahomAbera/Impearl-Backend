@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const { getMatchesForUser, buildFreelancerSummary, buildProviderSummary } = require('../utils/matching');
 const FreelancerProfile = require('../models/FreelancerProfile');
 const ServiceProviderProfile = require('../models/ServiceProviderProfile');
+const CollaborationInterest = require('../models/CollaborationInterest');
 
 router.get('/top', auth, async (req, res) => {
   try {
@@ -54,6 +55,18 @@ router.post('/request', auth, requireRole(['freelancer', 'service_provider']), a
       note?.trim() ||
       `${summary.name || summary.companyName} would like to collaborate on your automation goals.`;
 
+    await CollaborationInterest.findOneAndUpdate(
+      { senderUser: req.userId, businessUser: businessUser._id },
+      {
+        senderUser: req.userId,
+        senderType: req.userType,
+        businessUser: businessUser._id,
+        note: messageBody,
+        status: 'sent',
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
     await Notification.create({
       user: businessUser._id,
       type: 'collaboration_interest',
@@ -65,6 +78,36 @@ router.post('/request', auth, requireRole(['freelancer', 'service_provider']), a
   } catch (error) {
     console.error('Send collaboration request error:', error);
     res.status(500).json({ success: false, message: 'Error sending request' });
+  }
+});
+
+router.get('/interests', auth, requireRole(['freelancer', 'service_provider']), async (req, res) => {
+  try {
+    const interests = await CollaborationInterest.find({ senderUser: req.userId })
+      .populate({ path: 'businessUser', select: 'businessProfile email userType' })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const formatted = interests.map((interest) => ({
+      _id: interest._id,
+      note: interest.note,
+      status: interest.status,
+      createdAt: interest.createdAt,
+      updatedAt: interest.updatedAt,
+      business: interest.businessUser
+        ? {
+            id: interest.businessUser._id,
+            name: interest.businessUser.businessProfile?.businessName || interest.businessUser.email,
+            industry: interest.businessUser.businessProfile?.industry,
+            goals: interest.businessUser.businessProfile?.goals,
+          }
+        : null,
+    }));
+
+    res.json({ success: true, interests: formatted });
+  } catch (error) {
+    console.error('Get collaboration interests error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching interests' });
   }
 });
 

@@ -47,32 +47,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single item
-router.get('/:id', async (req, res) => {
-  try {
-    const item = await MarketplaceItem.findById(req.params.id)
-      .populate('ownerFreelancer')
-      .populate('ownerProvider');
-
-    if (!item) {
-      return res.status(404).json({ success: false, message: 'Marketplace item not found' });
-    }
-
-    const visible =
-      (item.ownerType === 'freelancer' && hasPayoutsEnabled(item.ownerFreelancer)) ||
-      (item.ownerType === 'service_provider' && hasPayoutsEnabled(item.ownerProvider));
-
-    if (!visible) {
-      return res.status(404).json({ success: false, message: 'Marketplace item not found' });
-    }
-
-    res.json({ success: true, item });
-  } catch (error) {
-    console.error('Get marketplace item error:', error);
-    res.status(500).json({ success: false, message: 'Error fetching marketplace item' });
-  }
-});
-
 const getOwnerFilter = async (userId, userType) => {
   if (userType === 'freelancer') {
     const profile = await FreelancerProfile.findOne({ user: userId });
@@ -152,6 +126,32 @@ router.get('/my', auth, requireRole(['freelancer', 'service_provider']), async (
   } catch (error) {
     console.error('Get my listings error:', error);
     res.status(500).json({ success: false, message: 'Error fetching listings' });
+  }
+});
+
+// Get single item
+router.get('/:id', async (req, res) => {
+  try {
+    const item = await MarketplaceItem.findById(req.params.id)
+      .populate('ownerFreelancer')
+      .populate('ownerProvider');
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Marketplace item not found' });
+    }
+
+    const visible =
+      (item.ownerType === 'freelancer' && hasPayoutsEnabled(item.ownerFreelancer)) ||
+      (item.ownerType === 'service_provider' && hasPayoutsEnabled(item.ownerProvider));
+
+    if (!visible) {
+      return res.status(404).json({ success: false, message: 'Marketplace item not found' });
+    }
+
+    res.json({ success: true, item });
+  } catch (error) {
+    console.error('Get marketplace item error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching marketplace item' });
   }
 });
 
