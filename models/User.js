@@ -30,6 +30,14 @@ const UserSchema = new mongoose.Schema({
   
   // Freelancer Profile Fields
   freelancerProfile: {
+    firstName: {
+      type: String,
+      trim: true
+    },
+    lastName: {
+      type: String,
+      trim: true
+    },
     name: {
       type: String,
       trim: true
@@ -37,6 +45,10 @@ const UserSchema = new mongoose.Schema({
     expertise: {
       type: String,
       trim: true
+    },
+    expertiseTags: {
+      type: [String],
+      default: []
     },
     yearsExperience: {
       type: String,
@@ -61,6 +73,31 @@ const UserSchema = new mongoose.Schema({
     },
     bio: {
       type: String
+    },
+    resumeUrl: {
+      type: String
+    },
+    experiences: {
+      type: [
+        {
+          role: String,
+          company: String,
+          timeframe: String,
+          skillsUsed: String,
+          summary: String,
+        }
+      ],
+      default: []
+    },
+    education: {
+      type: [
+        {
+          school: String,
+          degree: String,
+          graduationYear: String,
+        }
+      ],
+      default: []
     },
     rating: {
       type: Number,
@@ -144,17 +181,37 @@ const UserSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
-    industryFocus: {
-      type: [String],
-      default: []
-    },
-    integrations: {
-      type: [String],
-      default: []
-    },
-    description: {
-      type: String
-    },
+    headline: { type: String },
+    valueProposition: { type: String },
+    industryFocus: { type: [String], default: [] },
+    integrations: { type: [String], default: [] },
+    description: { type: String },
+    offerings: [
+      {
+        name: String,
+        promise: String,
+        priceRange: String,
+        timeline: String,
+      },
+    ],
+    caseStudies: [
+      {
+        client: String,
+        challenge: String,
+        solution: String,
+        impact: String,
+      },
+    ],
+    supportChannels: { type: [String], default: [] },
+    onboardingTime: { type: String },
+    pricingModel: { type: String },
+    teamSize: { type: String },
+    contactName: { type: String },
+    contactEmail: { type: String },
+    idealCustomerProfile: { type: String },
+    successMetrics: { type: String },
+    differentiators: { type: String },
+    certifications: { type: [String], default: [] },
     rating: {
       type: Number,
       min: 0,

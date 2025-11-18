@@ -17,7 +17,19 @@ const FreelancerProfileSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  firstName: {
+    type: String,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    trim: true
+  },
   skills: {
+    type: [String],
+    default: []
+  },
+  expertiseTags: {
     type: [String],
     default: []
   },
@@ -40,8 +52,33 @@ const FreelancerProfileSchema = new mongoose.Schema({
   portfolioUrl: {
     type: String
   },
+  resumeUrl: {
+    type: String
+  },
   bio: {
     type: String
+  },
+  experiences: {
+    type: [
+      {
+        role: String,
+        company: String,
+        timeframe: String,
+        skillsUsed: String,
+        summary: String,
+      }
+    ],
+    default: []
+  },
+  education: {
+    type: [
+      {
+        school: String,
+        degree: String,
+        graduationYear: String,
+      }
+    ],
+    default: []
   },
   ratingAvg: {
     type: Number,

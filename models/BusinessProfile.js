@@ -39,6 +39,15 @@ const BusinessProfileSchema = new mongoose.Schema({
   description: {
     type: String
   },
+  currentTools: {
+    type: String
+  },
+  challenges: {
+    type: String
+  },
+  preferredTimeline: {
+    type: String
+  },
   ratingAvg: {
     type: Number,
     min: 0,

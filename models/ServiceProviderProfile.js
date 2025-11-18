@@ -7,6 +7,10 @@ const ServiceProviderProfileSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   companyName: {
     type: String,
     required: true,
@@ -15,17 +19,37 @@ const ServiceProviderProfileSchema = new mongoose.Schema({
   websiteUrl: {
     type: String
   },
-  industryFocus: {
-    type: [String],
-    default: []
-  },
-  integrations: {
-    type: [String],
-    default: []
-  },
-  description: {
-    type: String
-  },
+  headline: { type: String },
+  valueProposition: { type: String },
+  industryFocus: { type: [String], default: [] },
+  integrations: { type: [String], default: [] },
+  description: { type: String },
+  offerings: [
+    {
+      name: String,
+      promise: String,
+      priceRange: String,
+      timeline: String,
+    },
+  ],
+  caseStudies: [
+    {
+      client: String,
+      challenge: String,
+      solution: String,
+      impact: String,
+    },
+  ],
+  supportChannels: { type: [String], default: [] },
+  onboardingTime: { type: String },
+  pricingModel: { type: String },
+  teamSize: { type: String },
+  contactName: { type: String },
+  contactEmail: { type: String },
+  idealCustomerProfile: { type: String },
+  successMetrics: { type: String },
+  differentiators: { type: String },
+  certifications: { type: [String], default: [] },
   ratingAvg: {
     type: Number,
     min: 0,
