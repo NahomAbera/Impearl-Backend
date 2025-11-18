@@ -6,7 +6,10 @@ const Contract = require('../models/Contract');
 const BusinessProfile = require('../models/BusinessProfile');
 const FreelancerProfile = require('../models/FreelancerProfile');
 const ServiceProviderProfile = require('../models/ServiceProviderProfile');
+const User = require('../models/User');
 const { getStripe, calculatePaymentBreakdown } = require('../utils/stripeClient');
+const { recordAuditEvent } = require('../utils/auditLogger');
+const { sendEmail } = require('../utils/mailer');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
 
@@ -74,6 +77,24 @@ router.post('/create-checkout-session', auth, requireRole('business'), async (re
     contract.checkoutSessionId = session.id;
     contract.paymentStatus = 'unpaid';
     await contract.save();
+
+    const businessProfile = await BusinessProfile.findById(contract.business);
+    const businessUser = await User.findById(businessProfile?.user);
+
+    recordAuditEvent({
+      contractId: contract._id,
+      userId: req.userId,
+      eventType: 'checkout_started',
+      details: { sessionId: session.id, totalCents },
+    });
+
+    if (businessUser?.email) {
+      sendEmail({
+        to: businessUser.email,
+        subject: `Complete payment for ${contract.title}`,
+        text: `Your contract "${contract.title}" is ready for payment. Total due: $${(totalCents / 100).toFixed(2)}.`,
+      });
+    }
 
     res.json({ success: true, url: session.url, sessionId: session.id });
   } catch (error) {
