@@ -212,4 +212,44 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/:id/respond', auth, requireRole(allowedTargetTypes), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { body } = req.body || {};
+
+    if (!body || !body.trim()) {
+      return res.status(400).json({ success: false, message: 'Response cannot be empty' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    if (String(review.targetUser) !== String(req.userId)) {
+      return res.status(403).json({ success: false, message: 'You can only respond to reviews about your profile' });
+    }
+
+    const responder = await User.findById(req.userId);
+    const responderName = getDisplayName(responder);
+
+    review.response = {
+      body: body.trim(),
+      respondedAt: new Date(),
+      responderUser: responder?._id,
+      responderName,
+    };
+
+    await review.save();
+    res.json({ success: true, review });
+  } catch (error) {
+    console.error('Respond to review error:', error);
+    res.status(500).json({ success: false, message: 'Unable to respond to review' });
+  }
+});
+
 module.exports = router;
