@@ -42,6 +42,15 @@ const ReviewSchema = new mongoose.Schema({
   },
   comment: {
     type: String
+  },
+  response: {
+    body: { type: String },
+    respondedAt: { type: Date },
+    responderUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    responderName: { type: String },
   }
 }, {
   timestamps: true
