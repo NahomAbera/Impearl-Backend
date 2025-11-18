@@ -8,6 +8,10 @@ const FreelancerProfile = require('../models/FreelancerProfile');
 const ServiceProviderProfile = require('../models/ServiceProviderProfile');
 const Notification = require('../models/Notification');
 const { getStripe, calculatePaymentBreakdown } = require('../utils/stripeClient');
+const { recordAuditEvent } = require('../utils/auditLogger');
+const { sendEmail } = require('../utils/mailer');
+const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 const ensureBusinessOwnership = async (contract, userId) => {
   const businessProfile = await BusinessProfile.findOne({ user: userId });
   if (businessProfile && String(businessProfile._id) === String(contract.business)) {
@@ -40,7 +44,8 @@ const ensureContractAccess = async (contract, userId, userType) => {
   }
   const profileModel = userType === 'freelancer' ? FreelancerProfile : ServiceProviderProfile;
   const profile = await profileModel.findOne({ user: userId });
-  const targetId = userType === 'freelancer' ? contract.targetFreelancer : contract.targetProvider;
+  const targetDoc = userType === 'freelancer' ? contract.targetFreelancer : contract.targetProvider;
+  const targetId = targetDoc?._id || targetDoc;
   if (!profile || !targetId || String(profile._id) !== String(targetId)) {
     throw new Error('You do not have access to this contract');
   }
@@ -90,6 +95,22 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+router.get('/:id/history', auth, async (req, res) => {
+  try {
+    const contract = await Contract.findById(req.params.id);
+    if (!contract) return res.status(404).json({ success: false, message: 'Contract not found' });
+    await ensureContractAccess(contract, req.userId, req.userType);
+
+    const history = await AuditLog.find({ contract: contract._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, history });
+  } catch (error) {
+    console.error('Get contract history error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching history' });
+  }
+});
+
 router.post('/:id/complete', auth, requireRole('business'), async (req, res) => {
   try {
     const contract = await Contract.findById(req.params.id);
@@ -123,6 +144,7 @@ router.post('/:id/release', auth, requireRole(['business', 'admin']), async (req
     if (!payeeProfile || !payeeProfile.stripeAccountId) {
       return res.status(400).json({ success: false, message: 'Payee does not have a payout account' });
     }
+    const payeeName = payeeProfile.companyName || payeeProfile.headline || payeeProfile.name || 'Payee';
 
     const stripe = getStripe();
     const { baseCents } = calculatePaymentBreakdown(contract.amountUsd || contract.agreedPrice);
@@ -156,6 +178,30 @@ router.post('/:id/release', auth, requireRole(['business', 'admin']), async (req
     }).catch(() => {});
 
     res.json({ success: true, contract });
+
+    recordAuditEvent({
+      contractId: contract._id,
+      userId: req.userId,
+      eventType: 'payment_released',
+      details: { transferId: transfer.id, amountCents: baseCents },
+    });
+
+    const businessUser = await User.findById(businessProfile?.user);
+    const payeeUser = await User.findById(payeeProfile.user);
+    if (businessUser?.email) {
+      sendEmail({
+        to: businessUser.email,
+        subject: `Payment released for ${contract.title}`,
+        text: `You released $${(baseCents / 100).toFixed(2)} to ${payeeName} for "${contract.title}".`,
+      });
+    }
+    if (payeeUser?.email) {
+      sendEmail({
+        to: payeeUser.email,
+        subject: `Funds released for ${contract.title}`,
+        text: `The business released $${(baseCents / 100).toFixed(2)} to your Stripe account for "${contract.title}".`,
+      });
+    }
   } catch (error) {
     console.error('Release payment error:', error);
     res.status(500).json({ success: false, message: error.message || 'Error releasing payment' });
@@ -189,6 +235,23 @@ router.post('/:id/request-release', auth, requireRole(['freelancer', 'service_pr
     }).catch(() => {});
 
     res.json({ success: true, contract });
+
+    recordAuditEvent({
+      contractId: contract._id,
+      userId: req.userId,
+      eventType: 'release_requested',
+    });
+
+    if (businessProfile?.user) {
+      const bizUser = await User.findById(businessProfile.user);
+      if (bizUser?.email) {
+        sendEmail({
+          to: bizUser.email,
+          subject: `Payment release requested for ${contract.title}`,
+          text: `${payeeName} asked you to release funds for "${contract.title}". Review the work and release when ready.`,
+        });
+      }
+    }
   } catch (error) {
     console.error('Request release error:', error);
     res.status(500).json({ success: false, message: error.message || 'Error requesting release' });
@@ -217,6 +280,21 @@ router.post('/:id/dispute', auth, requireRole('business'), async (req, res) => {
     }).catch(() => {});
 
     res.json({ success: true, contract });
+
+    recordAuditEvent({
+      contractId: contract._id,
+      userId: req.userId,
+      eventType: 'dispute_opened',
+    });
+
+    const payeeUser = await User.findById(payeeProfile?.user);
+    if (payeeUser?.email) {
+      sendEmail({
+        to: payeeUser.email,
+        subject: `Dispute opened for ${contract.title}`,
+        text: `The business opened a dispute for "${contract.title}". Please prepare any supporting materials.`,
+      });
+    }
   } catch (error) {
     console.error('Dispute payment error:', error);
     res.status(500).json({ success: false, message: error.message || 'Error opening dispute' });
