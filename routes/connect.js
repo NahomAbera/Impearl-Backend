@@ -63,8 +63,8 @@ router.post('/onboard', auth, requireRole(['freelancer', 'service_provider']), a
 
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${FRONTEND_URL}/dashboard?payout=refresh`,
-      return_url: `${FRONTEND_URL}/dashboard?payout=success`,
+      refresh_url: FRONTEND_URL,
+      return_url: FRONTEND_URL,
       type: 'account_onboarding',
     });
 
